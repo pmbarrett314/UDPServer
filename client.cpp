@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <w32api/winsock.h>
 
 #include "CSE4153.h"
 
@@ -22,11 +23,13 @@ void handle_ctrl_c();
 
 void create_socket();
 
+sockaddr_in get_server_address(uint16_t port, struct in_addr serverIP);
+
 void connect_to_server(uint16_t port, struct in_addr serverIP);
 
 void get_input_from_user(char *buffer);
 
-int send_message_to_server(char *buffer,uint16_t port, struct in_addr serverIP);
+int send_message_to_server(char *buffer, struct sockaddr_in serveraddr);
 
 int main(int argc, char *argv[])
 {
@@ -37,6 +40,7 @@ int main(int argc, char *argv[])
 
     printf("started with IP: %s, port: %d... \n", args[1], port);
     create_socket();
+    struct sockaddr_in serveraddr = get_server_address(port, serverIP);
 
     printf("Enter messages, max size: %d, ctrl + d to quit, *QUIT* to kill server \n", BUFSIZ);
 
@@ -46,12 +50,18 @@ int main(int argc, char *argv[])
         char buffer[BUFSIZ];
         get_input_from_user(buffer);
 
-        exitv = send_message_to_server(buffer,port,serverIP);
+        exitv = send_message_to_server(buffer,serveraddr);
         if (0 != exitv)
         {
+            sleep(1);
             //get return from the server and print it
             char recvbuffer[BUFSIZ];
-            recv(sock, recvbuffer, BUFSIZ, 0);
+            socklen_t fromlen=sizeof(serveraddr);
+            int recsize=recvfrom(sock,recvbuffer,BUFSIZ,0,(struct sockaddr*) &serveraddr,&fromlen);
+            if (recsize < 0) {
+                perror("recvfrom: ");
+                exit(EXIT_FAILURE);
+            }
             printf("server sent back: \"%s\"\n", recvbuffer);
         }
     } while (0 != exitv);
@@ -231,17 +241,23 @@ void get_input_from_user(char *buffer)
     }
 }
 
-int send_message_to_server(char *buffer,uint16_t port, struct in_addr serverIP)
+sockaddr_in get_server_address(uint16_t port, struct in_addr serverIP)
 {
-    //checks the user input to see if it should quit
-    //then sends the data
-    //returns 1 if should continue, 0 if should quit
     sockaddr_in serveraddr;
 
     memset(&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(port);
     serveraddr.sin_addr = serverIP;
+
+    return serveraddr;
+}
+
+int send_message_to_server(char *buffer, struct sockaddr_in serveraddr)
+{
+    //checks the user input to see if it should quit
+    //then sends the data
+    //returns 1 if should continue, 0 if should quit
 
     int retval;
     if (strstr(buffer, "\x04\0") != NULL)
@@ -265,7 +281,7 @@ int send_message_to_server(char *buffer,uint16_t port, struct in_addr serverIP)
         retval = 1;
     }
 
-    int bytes_sent =sendto(sock,buffer,strlen(buffer),0,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+    int bytes_sent = sendto(sock,buffer,strlen(buffer),0,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
     if (bytes_sent < 0) {
         printf("Error sending packet: %s\n", strerror(errno));
         exit(EXIT_FAILURE);

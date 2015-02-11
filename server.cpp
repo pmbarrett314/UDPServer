@@ -222,6 +222,8 @@ int communicate_with_clients(sockaddr_in serveraddr)
     }
 
     printf("datagram: %.*s\n", (int)recsize, buffer);
+    sleep(1);
+    sendto(sock,(void*) buffer, strlen(buffer),0,(struct sockaddr*) &serveraddr,sizeof(serveraddr));
 
     return exitv;
 }
