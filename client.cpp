@@ -24,8 +24,6 @@ void create_socket();
 
 sockaddr_in get_server_address(uint16_t port, struct in_addr serverIP);
 
-void connect_to_server(uint16_t port, struct in_addr serverIP);
-
 void get_input_from_user(char *buffer);
 
 int send_message_to_server(char *buffer, struct sockaddr_in serveraddr);
@@ -202,22 +200,6 @@ void create_socket()
         perror("cannot create socket");
         exit(EXIT_FAILURE);
     }
-}
-
-void connect_to_server(uint16_t port, struct in_addr serverIP)
-{
-    //connect ot the server at the specified address and port
-    sockaddr_in serveraddr;
-
-
-
-    if (-1 == connect(sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)))
-    {
-        close(sock);
-        fprintf(stderr, "error connect failed: %s serverIP: %s port: %d\n", strerror(errno), args[0], port);
-        exit(EXIT_FAILURE);
-    }
-
 }
 
 void get_input_from_user(char *buffer)
