@@ -70,7 +70,7 @@ void parse_arguments_and_flags(int argc, char *argv[])
     bool isPort = false, isIP = false;
     char const *amazonIP = "54.148.84.242";
     char const *localhost = "127.0.0.1";
-    char const *defaultport = "4349";
+    char const *defaultport = "4350";
 
     //parse flags
     while (-1 != (c = getopt(argc, argv, "adl")))
