@@ -189,6 +189,12 @@ int communicate_with_clients(sockaddr_in serveraddr)
         exit(EXIT_FAILURE);
     }
 
+    if(strstr(buffer,"*QUIT*")!=NULL)
+    {
+        printf("Client sent *QUIT*, terminating server...\n");
+        exitv=0;
+    }
+
     printf("datagram: %.*s\n", (int)recsize, buffer);
     int bytes_sent=sendto(sock,(void*) buffer, strlen(buffer),0,(struct sockaddr*) &serveraddr,sizeof(serveraddr));
     if(bytes_sent<0)
