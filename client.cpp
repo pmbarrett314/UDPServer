@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
         exitv = send_message_to_server(buffer,serveraddr);
         if (0 != exitv)
         {
-            sleep(1);
             //get return from the server and print it
             char recvbuffer[BUFSIZ];
             socklen_t fromlen=sizeof(serveraddr);

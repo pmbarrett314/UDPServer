@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "CSE4153.h"
 
-int sock, clientsock;
+int sock;
 char const *args[1];
 
 void parse_arguments_and_flags(int argc, char *argv[]);
@@ -21,13 +21,7 @@ void create_socket();
 
 sockaddr_in bind_socket(uint16_t port);
 
-void listen_to_socket(int backlog);
-
-void accept_client();
-
 int communicate_with_clients(sockaddr_in serveraddr);
-
-void disconnect_client();
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +44,6 @@ int main(int argc, char *argv[])
 
     printf("closing...\n");
     close(sock);
-    close(clientsock);
     exit(EXIT_SUCCESS);
 }
 
@@ -119,7 +112,6 @@ void handler(int sig)
     {
         printf("closing...\n");
         close(sock);
-        close(clientsock);
         exit(EXIT_SUCCESS);
     }
 }
@@ -179,30 +171,6 @@ sockaddr_in bind_socket(uint16_t port)
     return serveraddr;
 }
 
-void listen_to_socket(int backlog)
-{
-    //begin listening on the port with the given backlog of connections
-    if (-1 == listen(sock, backlog))
-    {
-        perror("error listen failed");
-        close(sock);
-        exit(EXIT_FAILURE);
-    }
-}
-
-void accept_client()
-{
-    //wait until client connects and accept
-    sockaddr_in clientaddr;
-    socklen_t addsize = sizeof(clientaddr);
-    if (-1 == (clientsock = accept(sock, (sockaddr *) &clientaddr, &addsize)))
-    {
-        perror("error accept failed");
-        close(sock);
-        exit(EXIT_FAILURE);
-    }
-}
-
 int communicate_with_clients(sockaddr_in serveraddr)
 {
     //perform communication with client
@@ -222,7 +190,6 @@ int communicate_with_clients(sockaddr_in serveraddr)
     }
 
     printf("datagram: %.*s\n", (int)recsize, buffer);
-    sleep(1);
     int bytes_sent=sendto(sock,(void*) buffer, strlen(buffer),0,(struct sockaddr*) &serveraddr,sizeof(serveraddr));
     if(bytes_sent<0)
     {
@@ -230,17 +197,4 @@ int communicate_with_clients(sockaddr_in serveraddr)
         exit(EXIT_FAILURE);
     }
     return exitv;
-}
-
-void disconnect_client()
-{
-    //cleanup and close the client connection
-    if (-1 == shutdown(clientsock, SHUT_RDWR))
-    {
-        perror("cannot shutdown socket");
-        close(clientsock);
-        close(sock);
-        exit(EXIT_FAILURE);
-    }
-    close(clientsock);
 }
