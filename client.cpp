@@ -26,7 +26,7 @@ void connect_to_server(uint16_t port, struct in_addr serverIP);
 
 void get_input_from_user(char *buffer);
 
-int send_message_to_server(char *buffer);
+int send_message_to_server(char *buffer,uint16_t port, struct in_addr serverIP);
 
 int main(int argc, char *argv[])
 {
@@ -38,8 +38,7 @@ int main(int argc, char *argv[])
     printf("started with IP: %s, port: %d... \n", args[1], port);
     create_socket();
 
-    connect_to_server(port, serverIP);
-    printf("Connected...\nEnter messages, max size: %d, ctrl + d to quit, *QUIT* to kill server \n", BUFSIZ);
+    printf("Enter messages, max size: %d, ctrl + d to quit, *QUIT* to kill server \n", BUFSIZ);
 
     int exitv = 0;
     do
@@ -47,7 +46,7 @@ int main(int argc, char *argv[])
         char buffer[BUFSIZ];
         get_input_from_user(buffer);
 
-        exitv = send_message_to_server(buffer);
+        exitv = send_message_to_server(buffer,port,serverIP);
         if (0 != exitv)
         {
             //get return from the server and print it
@@ -190,7 +189,7 @@ void handle_ctrl_c()
 void create_socket()
 {
     //create the socket
-    if (-1 == (sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)))
+    if (-1 == (sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)))
     {
         perror("cannot create socket");
         exit(EXIT_FAILURE);
@@ -202,10 +201,7 @@ void connect_to_server(uint16_t port, struct in_addr serverIP)
     //connect ot the server at the specified address and port
     sockaddr_in serveraddr;
 
-    memset(&serveraddr, 0, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(port);
-    serveraddr.sin_addr = serverIP;
+
 
     if (-1 == connect(sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)))
     {
@@ -235,22 +231,27 @@ void get_input_from_user(char *buffer)
     }
 }
 
-int send_message_to_server(char *buffer)
+int send_message_to_server(char *buffer,uint16_t port, struct in_addr serverIP)
 {
     //checks the user input to see if it should quit
     //then sends the data
     //returns 1 if should continue, 0 if should quit
+    sockaddr_in serveraddr;
+
+    memset(&serveraddr, 0, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_port = htons(port);
+    serveraddr.sin_addr = serverIP;
+
     int retval;
     if (strstr(buffer, "\x04\0") != NULL)
     {
         printf("EOT entered. disconnecting...\n");
-        send(sock, buffer, strlen(buffer) + 1, 0);
         retval = 0;
     }
     else if (strstr(buffer, "*QUIT*") != NULL)
     {
         printf("*QUIT* entered. disconnecting and killing server...\n");
-        send(sock, buffer, strlen(buffer) + 1, 0);
         retval = 0;
     }
     else
@@ -261,8 +262,13 @@ int send_message_to_server(char *buffer)
         {
             *p = '\0';
         }
-        send(sock, buffer, strlen(buffer) + 1, 0);
         retval = 1;
+    }
+
+    int bytes_sent =sendto(sock,buffer,strlen(buffer),0,(struct sockaddr*)&serveraddr,sizeof(serveraddr));
+    if (bytes_sent < 0) {
+        printf("Error sending packet: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
     }
     return retval;
 };

@@ -19,13 +19,13 @@ void handle_ctrl_c();
 
 void create_socket();
 
-void bind_socket(uint16_t port);
+sockaddr_in bind_socket(uint16_t port);
 
 void listen_to_socket(int backlog);
 
 void accept_client();
 
-int communicate_with_client();
+int communicate_with_clients(sockaddr_in serveraddr);
 
 void disconnect_client();
 
@@ -37,29 +37,15 @@ int main(int argc, char *argv[])
 
     printf("Started...\n");
     create_socket();
-    bind_socket(port);
+    sockaddr_in serveraddr=bind_socket(port);
 
-    int max_clients = 1;
-    listen_to_socket(max_clients);
     printf("Listening...\n");
 
     int exitv = 0;
     do
     {
-        accept_client();
+        exitv = communicate_with_clients(serveraddr);
 
-        printf("Client connected...\n");
-        exitv = communicate_with_client();
-
-        disconnect_client();
-        if (0 != exitv)
-        {
-            printf("client disconnected. listening...\n");
-        }
-        else
-        {
-            printf("client disconnected. ");
-        }
     } while (0 != exitv);
 
     printf("closing...\n");
@@ -75,7 +61,7 @@ void parse_arguments_and_flags(int argc, char *argv[])
     extern int optind;
     int c;
     bool isPort = false;
-    char const *defaultport = "4349";
+    char const *defaultport = "4350";
 
     //parse flags
     while (-1 != (c = getopt(argc, argv, "d")))
@@ -158,7 +144,7 @@ void handle_ctrl_c()
 void create_socket()
 {
     //create our server socket
-    if (-1 == (sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)))
+    if (-1 == (sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)))
     {
         perror("error socket not created");
         exit(EXIT_FAILURE);
@@ -173,14 +159,14 @@ void create_socket()
     }
 }
 
-void bind_socket(uint16_t port)
+sockaddr_in bind_socket(uint16_t port)
 {
     //bind the socket to the given port
     sockaddr_in serveraddr;
 
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(port);
-    serveraddr.sin_addr.s_addr = INADDR_ANY;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     memset(&(serveraddr.sin_zero), 0, 8);
 
     if (-1 == bind(sock, (struct sockaddr *) &serveraddr, sizeof(serveraddr)))
@@ -189,6 +175,8 @@ void bind_socket(uint16_t port)
         close(sock);
         exit(EXIT_FAILURE);
     }
+
+    return serveraddr;
 }
 
 void listen_to_socket(int backlog)
@@ -215,30 +203,26 @@ void accept_client()
     }
 }
 
-int communicate_with_client()
+int communicate_with_clients(sockaddr_in serveraddr)
 {
     //perform communication with client
     //receive data from the client, print it, then echo it back
     //check for flag values of ctrl+d or *QUIT* from the client
     //returns 1 if valid, 0 if should quit
+    ssize_t recsize;
+    socklen_t fromlen;
     int exitv = 1;
     char buffer[BUFSIZ];
-    while (0 < recv(clientsock, buffer, BUFSIZ, 0))
+
+    recsize = recvfrom(sock, (void *)buffer, BUFSIZ, 0, (struct sockaddr *)&serveraddr, &fromlen);
+    if(recsize<0)
     {
-        if (strchr(buffer, 4) != NULL)
-        {
-            printf("Client sent EOT. Disconnecting...\n");
-            break;
-        }
-        if (strstr(buffer, "*QUIT*") != NULL)
-        {
-            printf("Client sent *QUIT*, terminating server...\n");
-            exitv = 0;
-            break;
-        }
-        printf("\"%s\" received \n", buffer);
-        send(clientsock, buffer, strlen(buffer), 0);
+        perror("recvfrom: ");
+        exit(EXIT_FAILURE);
     }
+
+    printf("datagram: %.*s\n", (int)recsize, buffer);
+
     return exitv;
 }
 
