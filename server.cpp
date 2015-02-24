@@ -173,6 +173,7 @@ sockaddr_in bind_socket(uint16_t port)
 
 int communicate_with_clients(sockaddr_in serveraddr)
 {
+    printf("entered\n");
     //perform communication with client
     //receive data from the client, print it, then echo it back
     //check for flag values of ctrl+d or *QUIT* from the client
