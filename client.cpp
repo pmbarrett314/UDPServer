@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     int exitv = 0;
     do
     {
+        sleep(1);
         char buffer[BUFSIZ];
         get_input_from_user(buffer);
 
